@@ -1,0 +1,248 @@
+---
+title: "outputs_inspection"
+output: word_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# Calibration outputs
+
+5 replicated simulations
+
+2 forest types: 
+
+  - high altitude: pnigra, psylvestris, qpyrenaica
+  
+  - low altitude: phalepensis, ppinaster, qilex, qfaginea
+
+```{r}
+# Setup
+# sim_name <- "pnigra_psylvestris_qpyrenaica_reg1_replicate_"
+sim_name <- "phalepensis_ppinaster_qilex_qfaginea_reg1_replicate_"
+
+# species_list <- c("pnigra", "psylvestris", "qpyrenaica")
+species_list <- c("phalepensis", "ppinaster", "qilex", "qfaginea")
+
+di <- "..."
+
+ecoregion <- "Ecoregion 1"
+nr_replicates <- 5
+```
+
+```{r setup, include = FALSE, echo = FALSE}
+library(ggplot2)
+library(tidyverse)
+library(reshape)
+library(ggrepel)
+
+# Colors
+library(RColorBrewer)
+# display.brewer.all(colorblindFriendly = T)
+# display.brewer.pal(n = 12, name = 'Paired')
+# brewer.pal(12, 'Paired')
+
+# Full palette: 
+#   "#1F78B4" = dark blue
+#   "#33A02C" = dark green
+#   "#FB9A99" = pink
+#   "#6A3D9A" = dark purple
+#   "#FDBF6F" = light orange
+#   "#FF7F00" = orange
+#   "#E31A1C" = red
+#   "#A6CEE3" = light blue
+#   "#B2DF8A" = light green
+#   "#FFFF99" = yellow
+#   "#B15928" = brown
+#   "#CAB2D6" = light purple
+
+# Assign colors to species/groups
+cols <- c("phalepensis" = "#1F78B4", # dark blue
+          "pnigra" = "#33A02C", # dark green
+          "ppinaster" = "#FB9A99",  # pink
+          "psylvestris" = "#6A3D9A", # dark purple
+          "qfaginea" = "#B15928", # brown
+          "qilex" = "#FF7F00", # orange 
+          "qpyrenaica" = "#E31A1C", # red
+          "Junipers" = "#A6CEE3", # light blue
+          "Shrubs" = "#B2DF8A", # light green
+          "popnigra" = "#FFFF99") #  yellow
+```
+
+```{r, echo = FALSE}
+# Create empty data frame to fill in with data
+sim_years = c(1890:2099)
+months_dec = c(0.00, 0.08, 0.17, 0.25, 0.33, 0.42, 0.50, 0.58, 0.67, 0.75, 0.83, 0.92)
+
+simulation <- as.data.frame(expand.grid(Year = sim_years,
+                                        Month = months_dec,
+                                        Species = species_list)) %>%
+  mutate(Time = Year + Month) %>% 
+  dplyr::select(Time, Species)
+```
+
+```{r, echo = FALSE}
+# Load and fetch data
+all_site_data <- data.frame()
+
+for (i in 1:nr_replicates) {
+  site_data <- read.csv(paste(di, sim_name, i, "_site.csv", sep = "")) %>% # Load site data
+    full_join(simulation, by = c("Species" = "Species", # Create empty rows for dead species
+                                 "Time" = "Time")) %>%
+    mutate(Replicate = i) %>% # Add replicate column
+    dplyr::select(Replicate, Species, Time, Fol.gDW., Root.gDW., Wood.gDW., NetPsn.gC_m2_mo.)
+  
+  site_data[is.na(site_data)] <- 0
+  
+  site_data <- site_data %>%
+    mutate(total_biomass_tn_ha = (Fol.gDW. + Root.gDW. + Wood.gDW.) / 100) %>%
+    dplyr::select(Replicate, Species, Time, total_biomass_tn_ha, NetPsn.gC_m2_mo.)
+  
+  assign(paste("replicate", i, sep = ""), site_data)
+  
+  all_site_data <- rbind(all_site_data, site_data)
+}
+```
+
+```{r, echo = FALSE}
+# Add calendar month column
+month_equiv <- data.frame(Month_dec = c(0.00, 0.08, 0.17, 0.25, 0.33, 0.42, 0.50, 0.58, 0.67, 0.75, 0.83, 0.92), 
+                          Month = c(1,2,3,4,5,6,7,8,9,10,11,12))
+```
+
+# Biomass plots 
+
+## Inspect replicates
+```{r}
+ggplot(all_site_data, aes(x = Time, y = total_biomass_tn_ha, group = Replicate)) +
+  geom_line() +
+  facet_wrap( ~ Species, ncol = 2) +
+  theme_minimal()
+```
+
+At yearly scale: average among replicates and year
+```{r, echo = FALSE}
+# Calculate yearly averages and sd among replicates
+yearly_agg_site <- all_site_data[,c(2:5)] %>%
+  mutate(Year = floor(Time) - 1890) %>% # Create Year and Month_dec columns
+  dplyr::select(Species, Year, total_biomass_tn_ha, NetPsn.gC_m2_mo.) %>%
+  group_by(Species, Year) %>%
+  summarise(AVG_biomass_tn_ha = mean(total_biomass_tn_ha),
+            SD_biomass_tn_ha = sd(total_biomass_tn_ha),
+            AVG_netpsn_gC_m2_mo = mean(NetPsn.gC_m2_mo.),
+            SD_netpsn_gC_m2_mo = sd(NetPsn.gC_m2_mo.))
+
+# Plot
+plot_name <- "biomass.svg"
+# svg(file = paste("...", sim_name, plot_name, sep = ""), width = 6, height = 4, pointsize = 12)
+
+ggplot(yearly_agg_site, aes(x = Year, y = AVG_biomass_tn_ha, 
+                    ymin = AVG_biomass_tn_ha - SD_biomass_tn_ha, 
+                    ymax = AVG_biomass_tn_ha + SD_biomass_tn_ha, 
+                    fill = Species)) +
+  geom_ribbon(alpha=0.5) +
+  geom_point(size = 0.1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values=cols) +
+  scale_fill_manual(values=cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Biomass ('*tn~ ha^-1*')'), limits = c(0, 150)) +
+  scale_x_continuous("Time (years)") +
+  theme(legend.position = "none", text = element_text (size = 13)) +
+  theme(axis.text=element_text(size=14, face="bold"))
+
+# dev.off()
+```
+
+# Photosynthesis
+
+Inspect replicates
+```{r}
+ggplot(all_site_data, aes(x = Time, y = NetPsn.gC_m2_mo., color = as.factor(Replicate))) +
+  geom_point(size = 0.2) +
+  facet_wrap( ~ Species, ncol = 2) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+At monthly scale: average among replicates and month
+```{r, echo = FALSE}
+# Calculate monthly averages of photosynthesis
+month_agg_site <- all_site_data[,c(2:5)] %>%
+  mutate(Year = floor(Time), Month_dec = round(Time - Year, digits = 2)) %>% # Create Year and Month_dec columns
+  left_join(month_equiv) %>%
+  dplyr::select(Species, Month, total_biomass_tn_ha, NetPsn.gC_m2_mo.) %>%
+  group_by(Species, Month) %>%
+  summarise(AVG_biomass_tn_ha = mean(total_biomass_tn_ha),
+            SD_biomass_tn_ha = sd(total_biomass_tn_ha),
+            AVG_netpsn_gC_m2_mo = mean(NetPsn.gC_m2_mo.),
+            SD_netpsn_gC_m2_mo = sd(NetPsn.gC_m2_mo.))
+```
+
+```{r, echo = FALSE}
+# ggplot(month_agg_site, aes(x = Month, y = AVG_netpsn_gC_m2_mo, 
+#                     ymin = AVG_netpsn_gC_m2_mo - SD_netpsn_gC_m2_mo, 
+#                     ymax = AVG_netpsn_gC_m2_mo + SD_netpsn_gC_m2_mo, fill = Species)) +
+#   geom_point(size = 1, aes(colour = Species)) +
+#   geom_line(aes(colour = Species)) +
+#   # scale_color_manual(values=c("#F0E442", "#0072B2", "#D55E00", "#CC79A7")) +
+#   scale_color_manual(values=c("#E69F00", "#56B4E9", "#009E73", "#CC79A7")) +
+#   # geom_ribbon(alpha=0.5) +
+#   geom_errorbar(width=.2, color = "grey") +
+#   theme_minimal() +
+#   scale_y_continuous("Net Photosynthesis (gC/m2·mo)", limits = c(0, 150)) +
+#   scale_x_continuous("Month", breaks = c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+#   theme(legend.position = "bottom") +
+#   ggtitle(paste("Net Photosynthesis", ecoregion, sep = " - "))
+
+# ggplot(month_agg_site, aes(x = Month, y = AVG_netpsn_gC_m2_mo, 
+#                     ymin = AVG_netpsn_gC_m2_mo - SD_netpsn_gC_m2_mo, 
+#                     ymax = AVG_netpsn_gC_m2_mo + SD_netpsn_gC_m2_mo, fill = Species)) +
+#   geom_point(size = 1, aes(colour = Species, shape = Species)) +
+#   # geom_line(aes(colour = Species)) +
+#   # scale_color_manual(values=c("#F0E442", "#0072B2", "#D55E00", "#CC79A7")) +
+#   scale_color_manual(values=c("#E69F00", "#56B4E9", "#009E73", "#CC79A7")) +
+#   # geom_ribbon(alpha=0.5) +
+#   geom_errorbar(width=.2, color = "grey") +
+#   theme_minimal() +
+#   scale_y_continuous("Net Photosynthesis (gC/m2·mo)", limits = c(0, 150)) +
+#   scale_x_continuous("Month", breaks = c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+#   theme(legend.position = "bottom") +
+#   ggtitle(paste("Net Photosynthesis", ecoregion, sep = " - "))
+```
+
+At monthly scale: average among replicates and month - filtering for years 50-75
+```{r, echo = FALSE}
+# Calculate monthly averages of photosynthesis
+month_agg_site <- all_site_data[,c(2:5)] %>%
+  mutate(Year = floor(Time), Month_dec = round(Time - Year, digits = 2)) %>% # Create Year and Month_dec columns
+  filter(Year %in% (1940:1965)) %>%
+  left_join(month_equiv) %>%
+  dplyr::select(Species, Month, total_biomass_tn_ha, NetPsn.gC_m2_mo.) %>%
+  group_by(Species, Month) %>%
+  summarise(AVG_biomass_tn_ha = mean(total_biomass_tn_ha),
+            SD_biomass_tn_ha = sd(total_biomass_tn_ha),
+            AVG_netpsn_gC_m2_mo = mean(NetPsn.gC_m2_mo.),
+            SD_netpsn_gC_m2_mo = sd(NetPsn.gC_m2_mo.))
+
+# Plot
+plot_name <- "monthly_psn.jpeg"
+# jpeg(file = paste("...", sim_name, plot_name, sep = ""), width=6, height=4, units="in", res=300)
+
+ggplot(month_agg_site, aes(x = Month, y = AVG_netpsn_gC_m2_mo, 
+                    ymin = AVG_netpsn_gC_m2_mo - SD_netpsn_gC_m2_mo, 
+                    ymax = AVG_netpsn_gC_m2_mo + SD_netpsn_gC_m2_mo, fill = Species)) +
+  geom_errorbar(width=.2, color = "grey") +
+  geom_point(size = 1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values=cols) +
+  scale_fill_manual(values=cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Net Photosynthesis ('*gC~ m^-2~ month^-1*')'),
+                     limits = c(0, 150)) +
+  scale_x_continuous("Month", 
+                     breaks = c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+  theme(legend.position = "bottom", text = element_text (size = 13)) +
+  theme(axis.text=element_text(size=14, face="bold"))
+
+# dev.off()
+```

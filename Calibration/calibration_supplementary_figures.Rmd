@@ -1,0 +1,599 @@
+---
+title: "Calibration simulations"
+output: word_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(RColorBrewer)
+
+# Setup folders and list of species
+di <- "..."
+
+# Assign colors to species/groups
+cols <- c("phalepensis" = "#1F78B4", # dark blue
+          "pnigra" = "#33A02C", # dark green
+          "ppinaster" = "#FB9A99",  # pink
+          "psylvestris" = "#6A3D9A", # dark purple
+          "qfaginea" = "#B15928", # brown
+          "qilex" = "#FF7F00", # orange 
+          "qpyrenaica" = "#E31A1C", # red
+          "Junipers" = "#A6CEE3", # light blue
+          "Shrubs" = "#B2DF8A", # light green
+          "popnigra" = "#FFFF99", # yellow
+          "jcommunis" = "#CAB2D6", # light purple
+          "joxycedrus" = "#A6CEE3", # light blue
+          "tall" = "#B2DF8A", # light green
+          "medium" = "#A6CEE3", # light blue
+          "short" = "#CAB2D6") # light purple) 
+```
+
+# Single species simulations
+
+Simulations where each species is simulated growing alone as a single cohort with average historical climate for climate region 1.
+
+```{r, echo = FALSE}
+# Load data and fetch date columns
+month_equiv <- data.frame(Month_dec = c(0.00, 0.08, 0.17, 0.25, 0.33, 0.42, 0.50, 0.58, 0.67, 0.75, 0.83, 0.92), Month = c(1,2,3,4,5,6,7,8,9,10,11,12))
+
+species_site <- read.csv(paste(di, "All_spp_hist_climate", "_site.csv", sep = "")) %>%
+  mutate(Year = floor(Time) - 1890,
+         Month_dec = round(Time - floor(Time), digits = 2),
+         total_biomass_tn_ha = (Fol.gDW. + Root.gDW. + Wood.gDW.) / 100) %>%
+  left_join(month_equiv)
+```
+
+```{r, echo = FALSE}
+# Biomass data
+biomass_data <- species_site %>%
+  select(Species, Year, total_biomass_tn_ha) %>%
+  group_by(Species, Year) %>%
+  summarise(AVG_biomass_tn_ha = mean(total_biomass_tn_ha, na.rm = TRUE))
+
+# NetPsn data
+netpsn_data <- species_site %>%
+  select(Species, Month, NetPsn.gC_m2_mo.) %>%
+  group_by(Species, Month) %>%
+  summarise(AVG_netpsn = mean(NetPsn.gC_m2_mo., na.rm = TRUE))
+```
+
+```{r, echo = FALSE}
+# P. sylvestris
+biomass_data %>%
+  filter(Species == "psylvestris") %>%
+  ggplot(aes(x = Year, y = AVG_biomass_tn_ha, 
+                    fill = Species)) +
+  ggtitle("P. sylvestris") +
+  geom_point(size = 0.1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values = cols) +
+  scale_fill_manual(values = cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Biomass ('*tn~ ha^-1*')'), limits = c(0, 230)) +
+  scale_x_continuous("Time (years)") +
+  theme(legend.position = "none", text = element_text (size = 13), plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+
+netpsn_data %>%
+  filter(Species == "psylvestris") %>%
+  ggplot(aes(x = Month, y = AVG_netpsn, fill = Species)) +
+  ggtitle("P. sylvestris") +
+  geom_point(size = 1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values=cols) +
+  scale_fill_manual(values=cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Net Photosynthesis ('*gC~ m^-2~ month^-1*')'), limits = c(0, 200)) +
+  scale_x_continuous("Month", 
+                     breaks = c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+  theme(legend.position = "none", plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+```
+
+```{r, echo = FALSE}
+# P. nigra
+biomass_data %>%
+  filter(Species == "pnigra") %>%
+  ggplot(aes(x = Year, y = AVG_biomass_tn_ha, 
+                    fill = Species)) +
+  ggtitle("P. nigra") +
+  geom_point(size = 0.1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values = cols) +
+  scale_fill_manual(values = cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Biomass ('*tn~ ha^-1*')'), limits = c(0, 230)) +
+  scale_x_continuous("Time (years)") +
+  theme(legend.position = "none", text = element_text (size = 13), plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+
+netpsn_data %>%
+  filter(Species == "pnigra") %>%
+  ggplot(aes(x = Month, y = AVG_netpsn, fill = Species)) +
+  ggtitle("P. nigra") +
+  geom_point(size = 1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values=cols) +
+  scale_fill_manual(values=cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Net Photosynthesis ('*gC~ m^-2~ month^-1*')'), limits = c(0, 200)) +
+  scale_x_continuous("Month", 
+                     breaks = c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+  theme(legend.position = "none", plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+```
+
+```{r, echo = FALSE}
+# P. halepensis
+biomass_data %>%
+  filter(Species == "phalepensis") %>%
+  ggplot(aes(x = Year, y = AVG_biomass_tn_ha, 
+                    fill = Species)) +
+  ggtitle("P. halepensis") +
+  geom_point(size = 0.1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values = cols) +
+  scale_fill_manual(values = cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Biomass ('*tn~ ha^-1*')'), limits = c(0, 230)) +
+  scale_x_continuous("Time (years)") +
+  theme(legend.position = "none", text = element_text (size = 13), plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+
+netpsn_data %>%
+  filter(Species == "phalepensis") %>%
+  ggplot(aes(x = Month, y = AVG_netpsn, fill = Species)) +
+  ggtitle("P. halepensis") +
+  geom_point(size = 1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values=cols) +
+  scale_fill_manual(values=cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Net Photosynthesis ('*gC~ m^-2~ month^-1*')'), limits = c(0, 200)) +
+  scale_x_continuous("Month", 
+                     breaks = c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+  theme(legend.position = "none", plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+```
+
+```{r, echo = FALSE}
+# P. pinaster
+biomass_data %>%
+  filter(Species == "ppinaster") %>%
+  ggplot(aes(x = Year, y = AVG_biomass_tn_ha, 
+                    fill = Species)) +
+  ggtitle("P. pinaster") +
+  geom_point(size = 0.1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values = cols) +
+  scale_fill_manual(values = cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Biomass ('*tn~ ha^-1*')'), limits = c(0, 230)) +
+  scale_x_continuous("Time (years)") +
+  theme(legend.position = "none", text = element_text (size = 13), plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+
+netpsn_data %>%
+  filter(Species == "ppinaster") %>%
+  ggplot(aes(x = Month, y = AVG_netpsn, fill = Species)) +
+  ggtitle("P. pinaster") +
+  geom_point(size = 1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values=cols) +
+  scale_fill_manual(values=cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Net Photosynthesis ('*gC~ m^-2~ month^-1*')'), limits = c(0, 200)) +
+  scale_x_continuous("Month", 
+                     breaks = c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+  theme(legend.position = "none", plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+```
+
+```{r, echo = FALSE}
+# Q. ilex
+biomass_data %>%
+  filter(Species == "qilex") %>%
+  ggplot(aes(x = Year, y = AVG_biomass_tn_ha, 
+                    fill = Species)) +
+  ggtitle("Q. ilex") +
+  geom_point(size = 0.1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values = cols) +
+  scale_fill_manual(values = cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Biomass ('*tn~ ha^-1*')'), limits = c(0, 230)) +
+  scale_x_continuous("Time (years)") +
+  theme(legend.position = "none", text = element_text (size = 13), plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+
+netpsn_data %>%
+  filter(Species == "qilex") %>%
+  ggplot(aes(x = Month, y = AVG_netpsn, fill = Species)) +
+  ggtitle("Q. ilex") +
+  geom_point(size = 1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values=cols) +
+  scale_fill_manual(values=cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Net Photosynthesis ('*gC~ m^-2~ month^-1*')'), limits = c(0, 200)) +
+  scale_x_continuous("Month", 
+                     breaks = c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+  theme(legend.position = "none", plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+```
+
+```{r, echo = FALSE}
+# Q. faginea
+biomass_data %>%
+  filter(Species == "qfaginea") %>%
+  ggplot(aes(x = Year, y = AVG_biomass_tn_ha, 
+                    fill = Species)) +
+  ggtitle("Q. faginea") +
+  geom_point(size = 0.1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values = cols) +
+  scale_fill_manual(values = cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Biomass ('*tn~ ha^-1*')'), limits = c(0, 230)) +
+  scale_x_continuous("Time (years)") +
+  theme(legend.position = "none", text = element_text (size = 13), plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+
+netpsn_data %>%
+  filter(Species == "qfaginea") %>%
+  ggplot(aes(x = Month, y = AVG_netpsn, fill = Species)) +
+  ggtitle("Q. faginea") +
+  geom_point(size = 1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values=cols) +
+  scale_fill_manual(values=cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Net Photosynthesis ('*gC~ m^-2~ month^-1*')'), limits = c(0, 200)) +
+  scale_x_continuous("Month", 
+                     breaks = c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+  theme(legend.position = "none", plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+```
+
+```{r, echo = FALSE}
+# Q. pyrenaica
+biomass_data %>%
+  filter(Species == "qpyrenaica") %>%
+  ggplot(aes(x = Year, y = AVG_biomass_tn_ha, 
+                    fill = Species)) +
+  ggtitle("Q. pyrenaica") +
+  geom_point(size = 0.1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values = cols) +
+  scale_fill_manual(values = cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Biomass ('*tn~ ha^-1*')'), limits = c(0, 230)) +
+  scale_x_continuous("Time (years)") +
+  theme(legend.position = "none", text = element_text (size = 13), plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+
+netpsn_data %>%
+  filter(Species == "qpyrenaica") %>%
+  ggplot(aes(x = Month, y = AVG_netpsn, fill = Species)) +
+  ggtitle("Q. pyrenaica") +
+  geom_point(size = 1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values=cols) +
+  scale_fill_manual(values=cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Net Photosynthesis ('*gC~ m^-2~ month^-1*')'), limits = c(0, 200)) +
+  scale_x_continuous("Month", 
+                     breaks = c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+  theme(legend.position = "none", plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+```
+
+```{r, echo = FALSE}
+# Pop. nigra
+biomass_data %>%
+  filter(Species == "popnigra") %>%
+  ggplot(aes(x = Year, y = AVG_biomass_tn_ha, 
+                    fill = Species)) +
+  ggtitle("Pop. nigra") +
+  geom_point(size = 0.1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values = cols) +
+  scale_fill_manual(values = cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Biomass ('*tn~ ha^-1*')'), limits = c(0, 230)) +
+  scale_x_continuous("Time (years)") +
+  theme(legend.position = "none", text = element_text (size = 13), plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+
+netpsn_data %>%
+  filter(Species == "popnigra") %>%
+  ggplot(aes(x = Month, y = AVG_netpsn, fill = Species)) +
+  ggtitle("Pop. nigra") +
+  geom_point(size = 1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values=cols) +
+  scale_fill_manual(values=cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Net Photosynthesis ('*gC~ m^-2~ month^-1*')'), limits = c(0, 200)) +
+  scale_x_continuous("Month", 
+                     breaks = c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+  theme(legend.position = "none", plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+```
+
+```{r, echo = FALSE}
+# J. communis
+biomass_data %>%
+  filter(Species == "jcommunis") %>%
+  ggplot(aes(x = Year, y = AVG_biomass_tn_ha, 
+                    fill = Species)) +
+  ggtitle("J. communis") +
+  geom_point(size = 0.1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values = cols) +
+  scale_fill_manual(values = cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Biomass ('*tn~ ha^-1*')'), limits = c(0, 230)) +
+  scale_x_continuous("Time (years)") +
+  theme(legend.position = "none", text = element_text (size = 13), plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+
+netpsn_data %>%
+  filter(Species == "jcommunis") %>%
+  ggplot(aes(x = Month, y = AVG_netpsn, fill = Species)) +
+  ggtitle("J. communis") +
+  geom_point(size = 1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values=cols) +
+  scale_fill_manual(values=cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Net Photosynthesis ('*gC~ m^-2~ month^-1*')'), limits = c(0, 200)) +
+  scale_x_continuous("Month", 
+                     breaks = c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+  theme(legend.position = "none", plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+```
+
+```{r, echo = FALSE}
+# J. oxycedrus
+biomass_data %>%
+  filter(Species == "joxycedrus") %>%
+  ggplot(aes(x = Year, y = AVG_biomass_tn_ha, 
+                    fill = Species)) +
+  ggtitle("J. oxycedrus") +
+  geom_point(size = 0.1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values = cols) +
+  scale_fill_manual(values = cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Biomass ('*tn~ ha^-1*')'), limits = c(0, 230)) +
+  scale_x_continuous("Time (years)") +
+  theme(legend.position = "none", text = element_text (size = 13), plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+
+netpsn_data %>%
+  filter(Species == "joxycedrus") %>%
+  ggplot(aes(x = Month, y = AVG_netpsn, fill = Species)) +
+  ggtitle("J. oxycedrus") +
+  geom_point(size = 1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values=cols) +
+  scale_fill_manual(values=cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Net Photosynthesis ('*gC~ m^-2~ month^-1*')'), limits = c(0, 200)) +
+  scale_x_continuous("Month", 
+                     breaks = c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+  theme(legend.position = "none", plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+```
+
+# Groups of species
+
+Simulations where groups of species are simulated growing together. Each species has one cohort established at the beginning of the simulation.
+
+```{r, echo = FALSE}
+psylv_qpyr <- read.csv(paste(di, "psylvestris_qpyrenaica_reg1", "_site.csv", sep = "")) %>%
+  mutate(Year = floor(Time) - 1890,
+         Month_dec = round(Time - floor(Time), digits = 2),
+         total_biomass_tn_ha = (Fol.gDW. + Root.gDW. + Wood.gDW.) / 100) %>%
+  left_join(month_equiv)
+
+psylv_qpyr %>%
+  select(Species, Year, total_biomass_tn_ha) %>%
+  group_by(Species, Year) %>%
+  summarise(AVG_biomass_tn_ha = mean(total_biomass_tn_ha, na.rm = TRUE)) %>%
+  ggplot(aes(x = Year, y = AVG_biomass_tn_ha, 
+                    fill = Species)) +
+  ggtitle("P. sylvestris and Q. pyrenaica") +
+  geom_point(size = 0.1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values = cols) +
+  scale_fill_manual(values = cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Biomass ('*tn~ ha^-1*')'), limits = c(0, 230)) +
+  scale_x_continuous("Time (years)") +
+  theme(legend.position = "bottom", text = element_text (size = 13), plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+
+# NetPsn data
+psylv_qpyr %>%
+  select(Species, Month, NetPsn.gC_m2_mo.) %>%
+  group_by(Species, Month) %>%
+  summarise(AVG_netpsn = mean(NetPsn.gC_m2_mo., na.rm = TRUE)) %>%
+  ggplot(aes(x = Month, y = AVG_netpsn, fill = Species)) +
+  ggtitle("P. sylvestris and Q. pyrenaica") +
+  geom_point(size = 1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values=cols) +
+  scale_fill_manual(values=cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Net Photosynthesis ('*gC~ m^-2~ month^-1*')'), limits = c(0, 200)) +
+  scale_x_continuous("Month", 
+                     breaks = c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+  theme(legend.position = "bottom", text = element_text (size = 13), plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+```
+
+```{r, echo = FALSE}
+psylv_pnigra <- read.csv(paste(di, "pnigra_psylvestris_reg1", "_site.csv", sep = "")) %>%
+  mutate(Year = floor(Time) - 1890,
+         Month_dec = round(Time - floor(Time), digits = 2),
+         total_biomass_tn_ha = (Fol.gDW. + Root.gDW. + Wood.gDW.) / 100) %>%
+  left_join(month_equiv)
+
+biomas_psylv_pnigra <- psylv_pnigra %>%
+  select(Species, Year, total_biomass_tn_ha) %>%
+  group_by(Species, Year) %>%
+  summarise(AVG_biomass_tn_ha = mean(total_biomass_tn_ha, na.rm = TRUE))
+
+biomas_psylv_pnigra %>% # max_year_pnigra
+  filter(Species == "pnigra") %>%
+  summarise(max_year = max(Year))
+
+biomas_psylv_pnigra %>% # max_year_psylvestris
+  filter(Species == "psylvestris") %>%
+  summarise(max_year = max(Year))
+
+dead_years <- data.frame(Species = "pnigra",
+                         Year = as.numeric(c(120:209)),
+                         AVG_biomass_tn_ha = 0)
+
+biomas_psylv_pnigra <- rbind(as.data.frame(biomas_psylv_pnigra), dead_years)
+
+ggplot(biomas_psylv_pnigra, aes(x = Year, y = AVG_biomass_tn_ha, 
+                    fill = Species)) +
+  ggtitle("P. sylvestris and P. nigra") +
+  geom_point(size = 0.1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values = cols) +
+  scale_fill_manual(values = cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Biomass ('*tn~ ha^-1*')'), limits = c(0, 230)) +
+  scale_x_continuous("Time (years)") +
+  theme(legend.position = "bottom", text = element_text (size = 13), plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+
+# NetPsn data
+psylv_pnigra %>%
+  select(Species, Month, NetPsn.gC_m2_mo.) %>%
+  group_by(Species, Month) %>%
+  summarise(AVG_netpsn = mean(NetPsn.gC_m2_mo., na.rm = TRUE)) %>%
+  ggplot(aes(x = Month, y = AVG_netpsn, fill = Species)) +
+  ggtitle("P. sylvestris and P. nigra") +
+  geom_point(size = 1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values=cols) +
+  scale_fill_manual(values=cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Net Photosynthesis ('*gC~ m^-2~ month^-1*')'), limits = c(0, 200)) +
+  scale_x_continuous("Month", 
+                     breaks = c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+  theme(legend.position = "bottom", text = element_text (size = 13), plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+```
+
+```{r, echo = FALSE}
+phalep_qilex <- read.csv(paste(di, "phalepensis_qilex_reg1", "_site.csv", sep = "")) %>%
+  mutate(Year = floor(Time) - 1890,
+         Month_dec = round(Time - floor(Time), digits = 2),
+         total_biomass_tn_ha = (Fol.gDW. + Root.gDW. + Wood.gDW.) / 100) %>%
+  left_join(month_equiv)
+
+biomass_phalep_qilex <- phalep_qilex %>%
+  select(Species, Year, total_biomass_tn_ha) %>%
+  group_by(Species, Year) %>%
+  summarise(AVG_biomass_tn_ha = mean(total_biomass_tn_ha, na.rm = TRUE))
+
+biomass_phalep_qilex %>% # max_year_phalepensis
+  filter(Species == "phalepensis") %>%
+  summarise(max_year = max(Year))
+
+biomass_phalep_qilex %>% # max_year_qilex
+  filter(Species == "qilex") %>%
+  summarise(max_year = max(Year))
+
+dead_years <- data.frame(Species = "phalepensis",
+                         Year = as.numeric(c(129:209)),
+                         AVG_biomass_tn_ha = 0)
+
+biomass_phalep_qilex <- rbind(as.data.frame(biomass_phalep_qilex), dead_years)
+
+ggplot(biomass_phalep_qilex, aes(x = Year, y = AVG_biomass_tn_ha, 
+                    fill = Species)) +
+  ggtitle("P. halepensis and Q. ilex") +
+  geom_point(size = 0.1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values = cols) +
+  scale_fill_manual(values = cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Biomass ('*tn~ ha^-1*')'), limits = c(0, 230)) +
+  scale_x_continuous("Time (years)") +
+  theme(legend.position = "bottom", text = element_text (size = 13), plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+
+# NetPsn data
+phalep_qilex %>%
+  select(Species, Month, NetPsn.gC_m2_mo.) %>%
+  group_by(Species, Month) %>%
+  summarise(AVG_netpsn = mean(NetPsn.gC_m2_mo., na.rm = TRUE)) %>%
+  ggplot(aes(x = Month, y = AVG_netpsn, fill = Species)) +
+  ggtitle("P. halepensis and Q. ilex") +
+  geom_point(size = 1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values=cols) +
+  scale_fill_manual(values=cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Net Photosynthesis ('*gC~ m^-2~ month^-1*')'), limits = c(0, 200)) +
+  scale_x_continuous("Month", 
+                     breaks = c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+  theme(legend.position = "bottom", text = element_text (size = 13), plot.title = element_text(face = "italic")) +
+  theme(axis.text=element_text(size=14, face="bold"))
+```
+
+```{r, echo = FALSE}
+shrubs <- read.csv(paste(di, "shrubs_reg1", "_site.csv", sep = "")) %>%
+  mutate(Year = floor(Time) - 1890,
+         Month_dec = round(Time - floor(Time), digits = 2),
+         total_biomass_tn_ha = (Fol.gDW. + Root.gDW. + Wood.gDW.) / 100) %>%
+  left_join(month_equiv)
+
+shrubs %>%
+  select(Species, Year, total_biomass_tn_ha) %>%
+  group_by(Species, Year) %>%
+  summarise(AVG_biomass_tn_ha = mean(total_biomass_tn_ha, na.rm = TRUE)) %>%
+  ggplot(aes(x = Year, y = AVG_biomass_tn_ha, 
+                    fill = Species)) +
+  ggtitle("Shrubs") +
+  geom_point(size = 0.1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values = cols) +
+  scale_fill_manual(values = cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Biomass ('*tn~ ha^-1*')'), limits = c(0, 230)) +
+  scale_x_continuous("Time (years)") +
+  theme(legend.position = "bottom", text = element_text (size = 13)) +
+  theme(axis.text=element_text(size=14, face="bold"))
+
+# NetPsn data
+shrubs %>%
+  select(Species, Month, NetPsn.gC_m2_mo.) %>%
+  group_by(Species, Month) %>%
+  summarise(AVG_netpsn = mean(NetPsn.gC_m2_mo., na.rm = TRUE)) %>%
+  ggplot(aes(x = Month, y = AVG_netpsn, fill = Species)) +
+  ggtitle("Shrubs") +
+  geom_point(size = 1, aes(colour = Species)) +
+  geom_line(aes(colour = Species)) +
+  scale_color_manual(values=cols) +
+  scale_fill_manual(values=cols) +
+  theme_classic() +
+  scale_y_continuous(bquote('Net Photosynthesis ('*gC~ m^-2~ month^-1*')'), limits = c(0, 200)) +
+  scale_x_continuous("Month", 
+                     breaks = c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+  theme(legend.position = "bottom", text = element_text (size = 13)) +
+  theme(axis.text=element_text(size=14, face="bold"))
+```
+

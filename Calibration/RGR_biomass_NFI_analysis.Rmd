@@ -1,0 +1,457 @@
+---
+title: "growth_rates_analysis"
+output: word_document
+editor_options: 
+  chunk_output_type: console
+---
+
+# Growth rates and biomass comparisons: NFI versus LANDIS outputs
+
+# NFI data: RGR
+```{r setup, include=FALSE, echo = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(ggplot2)
+library(reshape)
+```
+
+```{r, echo = FALSE}
+# Setup folders and load inputs files
+di <- "..."
+
+# Load NFI data
+esp_codigos <- read.table(".../especies_ANEXO12.txt", sep = ";", skip = 1, header = TRUE)
+
+data_growth <- read.table(paste(di, "Data_growth_IFN_SNevada.csv", sep = ""), sep = ",", header = TRUE) %>%
+  filter(AB3_Mgha_perc == 100)
+data_growth$Estadillo <- as.factor(data_growth$Estadillo)
+data_growth <- data_growth %>%
+  select(Provincia, Estadillo, Sp, RGR, B_IFN3) %>%
+  left_join(esp_codigos, by = c("Sp" = "Especie"))
+data_growth$Codigo <- as.factor(data_growth$Codigo)
+
+espparc_age <- read.csv(paste(di, "...", "PCEspParc.csv", sep = ""), sep = ";") %>% 
+  filter(is.na(Edad) == FALSE)
+espparc_age$Tabla_Provincia <- as.factor(espparc_age$Tabla_Provincia)
+espparc_age$Provincia[espparc_age$Tabla_Provincia == "4"] <- "Almeria"
+espparc_age$Provincia[espparc_age$Tabla_Provincia == "18"] <- "Granada"
+espparc_age$Estadillo <- as.factor(espparc_age$Estadillo)
+espparc_age$Especie <- as.factor(espparc_age$Especie)
+espparc_age <- espparc_age %>%
+  select(Provincia, Estadillo, Especie, Edad)
+espparc_age$Provincia <- as.factor(espparc_age$Provincia)
+```
+
+```{r, echo = FALSE}
+# Join growth rates and age data 
+RGR_age_NFI <- left_join(data_growth, espparc_age, by = c("Provincia" = "Provincia", "Estadillo" = "Estadillo", "Codigo" = "Especie")) 
+```
+
+# LANDIS data: RGR
+
+```{r, echo = FALSE}
+sim_name <- "All_spp_hist_climate"
+species_list <- c("phalepensis", "pnigra", "ppinaster",  "psylvestris", "qilex", "qpyrenaica", "popnigra")
+
+# Load data
+site <- read.csv(paste(di, "...", sim_name, "_site.csv", sep = ""))
+years <- c(1890:2099) # Create dates columns in site dataset
+months <- c(01:12)
+seasons <- c(1,1,1,2,2,2,3,3,3,4,4,4)
+dates <- merge(months, years)
+dates <- cbind(dates, seasons)
+colnames(dates) <- c("Month", "Year", "Season")
+site <- cbind(site, dates)
+```
+
+```{r, echo = FALSE}
+# Growth rates
+nr_classes <- 210 / 5
+age_classes <- data.frame(Years = 0:209, class = cut(0:209, nr_classes, include.lowest=TRUE, labels = c(1:nr_classes)))
+
+abovebio <- site %>%
+  mutate(abovebio = Wood.gDW. + Fol.gDW.,
+         Year_from_zero = Year - 1890) %>%
+  select(Year_from_zero, Species, abovebio) %>%
+  group_by(Year_from_zero, Species) %>%
+  summarise(avg_biomass = mean(abovebio, na.rm = TRUE)) %>%
+  filter(avg_biomass != 0) %>%
+  mutate(ln_bio = log(avg_biomass)) %>%
+  dplyr::select(Year_from_zero, Species, ln_bio) %>% 
+  left_join(age_classes, by = c("Year_from_zero" = "Years"))
+
+RGR_age_LANDIS <- data.frame(Species = c(), age_class = c(), RGR = c())
+
+for (i in 1:length(species_list)) {
+  for (j in 1:nr_classes) {
+    my_subset <- abovebio %>%
+      filter(Species == species_list[i] & class == j)
+    coef <- ifelse(length(my_subset$Year_from_zero) == 0, NA,
+                   lm(ln_bio ~ Year_from_zero, data = my_subset)$coefficients[2])
+    my_row <- data.frame(Species = species_list[i], age_class = j, RGR = coef)
+    RGR_age_LANDIS <- rbind(RGR_age_LANDIS, my_row)
+  }
+}
+
+RGR_age_LANDIS <- melt(RGR_age_LANDIS, id = c("age_class", "Species"))
+```
+
+# Comparison RGR
+
+```{r, echo = FALSE}
+RGR_age_LANDIS$source <- "LANDIS"
+RGR_age_LANDIS <- RGR_age_LANDIS %>%
+  mutate(RGR = value * 1000, # To transform RGR g/g to g/kg
+         Age = age_class * 5) %>%
+  select(source, Species, Age, age_class, RGR)
+
+RGR_age_NFI$source <- "NFI"
+RGR_age_NFI$Species[RGR_age_NFI$Sp == "Pinus sylvestris"] <- "psylvestris"
+RGR_age_NFI$Species[RGR_age_NFI$Sp == "Pinus nigra"] <- "pnigra"
+RGR_age_NFI$Species[RGR_age_NFI$Sp == "Pinus halepensis"] <- "phalepensis"
+RGR_age_NFI$Species[RGR_age_NFI$Sp == "Pinus pinaster"] <- "ppinaster"
+RGR_age_NFI$Species[RGR_age_NFI$Sp == "Quercus ilex"] <- "qilex"
+RGR_age_NFI$Species[RGR_age_NFI$Sp == "Quercus pyrenaica"] <- "qpyrenaica"
+RGR_age_NFI$Species[RGR_age_NFI$Sp == "Populus nigra"] <- "popnigra"
+
+RGR_age_NFI <- RGR_age_NFI %>%
+  mutate(Age = Edad) %>%
+  select(source, Species, Age, RGR, B_IFN3)
+```
+
+```{r, echo = FALSE}
+my_species <- "phalepensis"
+RGR_age_LANDIS_one_species <- RGR_age_LANDIS %>% filter(Species == my_species)
+RGR_age_NFI_one_species <- RGR_age_NFI %>% filter(Species == my_species)
+
+ggplot() +
+  geom_line(aes(x = Age, y = RGR, colour = "LANDIS"), data = RGR_age_LANDIS_one_species) +
+  geom_point(size = 0.5, aes(x = Age, y = RGR, colour = "NFI"), data = RGR_age_NFI_one_species) +
+  theme_minimal() +
+  scale_y_continuous("RGR (g/kg·year)", limits = c(0, 180)) +
+  scale_x_continuous("Age (years)", limits = c(0, 100)) +
+  theme(legend.position = "bottom") +
+  ggtitle(my_species)
+```
+
+```{r, echo = FALSE}
+my_species <- "psylvestris"
+RGR_age_LANDIS_one_species <- RGR_age_LANDIS %>% filter(Species == my_species)
+RGR_age_NFI_one_species <- RGR_age_NFI %>% filter(Species == my_species)
+
+ggplot() +
+  geom_line(aes(x = Age, y = RGR, colour = "LANDIS"), data = RGR_age_LANDIS_one_species) +
+  geom_point(size = 0.5, aes(x = Age, y = RGR, colour = "NFI"), data = RGR_age_NFI_one_species) +
+  theme_minimal() +
+  scale_y_continuous("RGR (g/kg·year)", limits = c(0, 180)) +
+  scale_x_continuous("Age (years)", limits = c(0, 100)) +
+  theme(legend.position = "bottom") +
+  ggtitle(my_species)
+```
+
+```{r, echo = FALSE}
+my_species <- "pnigra"
+RGR_age_LANDIS_one_species <- RGR_age_LANDIS %>% filter(Species == my_species)
+RGR_age_NFI_one_species <- RGR_age_NFI %>% filter(Species == my_species)
+
+ggplot() +
+  geom_line(aes(x = Age, y = RGR, colour = "LANDIS"), data = RGR_age_LANDIS_one_species) +
+  geom_point(size = 0.5, aes(x = Age, y = RGR, colour = "NFI"), data = RGR_age_NFI_one_species) +
+  theme_minimal() +
+  scale_y_continuous("RGR (g/kg·year)", limits = c(0, 180)) +
+  scale_x_continuous("Age (years)", limits = c(0, 100)) +
+  theme(legend.position = "bottom") +
+  ggtitle(my_species)
+```
+
+```{r, echo = FALSE}
+my_species <- "ppinaster"
+RGR_age_LANDIS_one_species <- RGR_age_LANDIS %>% filter(Species == my_species)
+RGR_age_NFI_one_species <- RGR_age_NFI %>% filter(Species == my_species)
+
+ggplot() +
+  geom_line(aes(x = Age, y = RGR, colour = "LANDIS"), data = RGR_age_LANDIS_one_species) +
+  geom_point(size = 0.5, aes(x = Age, y = RGR, colour = "NFI"), data = RGR_age_NFI_one_species) +
+  theme_minimal() +
+  scale_y_continuous("RGR (g/kg·year)", limits = c(0, 180)) +
+  scale_x_continuous("Age (years)", limits = c(0, 100)) +
+  theme(legend.position = "bottom") +
+  ggtitle(my_species)
+```
+
+```{r, echo = FALSE}
+my_species <- "ppinaster"
+RGR_age_LANDIS_one_species <- RGR_age_LANDIS %>% filter(Species == my_species)
+RGR_age_NFI_one_species <- RGR_age_NFI %>% filter(Species == my_species)
+
+ggplot() +
+  geom_line(aes(x = Age, y = RGR, colour = "LANDIS"), data = RGR_age_LANDIS_one_species) +
+  geom_point(size = 0.5, aes(x = Age, y = RGR, colour = "NFI"), data = RGR_age_NFI_one_species) +
+  theme_minimal() +
+  scale_y_continuous("RGR (g/kg·year)", limits = c(0, 180)) +
+  scale_x_continuous("Age (years)", limits = c(0, 100)) +
+  theme(legend.position = "bottom") +
+  ggtitle(my_species)
+```
+
+Note: qilex, qpyrenaica and popnigra do not have age assigned in NFI so they do not appear in these plots
+
+# Comparison: Biomass
+
+```{r}
+biomass_NFI <- RGR_age_NFI %>%
+  mutate(Biomass = B_IFN3 * 100) %>% # Mg/ha to g/m2
+  dplyr::select(source, Species, Age, Biomass)
+
+biomass_LANDIS <- site %>%
+  mutate(abovebio = Wood.gDW. + Fol.gDW.,
+         Age = Year - 1890,
+         source = "LANDIS") %>%
+  select(source, Age, Species, abovebio) %>%
+  group_by(source, Age, Species) %>%
+  summarise(Biomass = mean(abovebio, na.rm = TRUE)) %>%
+  filter(Biomass != 0) %>%
+  dplyr::select(source, Species, Age, Biomass)
+```
+
+```{r, echo = FALSE}
+my_species <- "ppinaster"
+biomass_LANDIS_one_species <- biomass_LANDIS %>% filter(Species == my_species)
+biomass_NFI_one_species <- biomass_NFI %>% filter(Species == my_species)
+
+ggplot() +
+  geom_line(aes(x = Age, y = Biomass, colour = "LANDIS"), data = biomass_LANDIS_one_species) +
+  geom_point(size = 0.5, aes(x = Age, y = Biomass, colour = "NFI"), data = biomass_NFI_one_species) +
+  theme_minimal() +
+  scale_y_continuous("Biomass (g/m2)") +
+  scale_x_continuous("Age (years)", limits = c(0, 100)) +
+  theme(legend.position = "bottom") +
+  ggtitle(my_species)
+```
+
+```{r, echo = FALSE}
+my_species <- "pnigra"
+biomass_LANDIS_one_species <- biomass_LANDIS %>% filter(Species == my_species)
+biomass_NFI_one_species <- biomass_NFI %>% filter(Species == my_species)
+
+ggplot() +
+  geom_line(aes(x = Age, y = Biomass, colour = "LANDIS"), data = biomass_LANDIS_one_species) +
+  geom_point(size = 0.5, aes(x = Age, y = Biomass, colour = "NFI"), data = biomass_NFI_one_species) +
+  theme_minimal() +
+  scale_y_continuous("Biomass (g/m2)") +
+  scale_x_continuous("Age (years)", limits = c(0, 100)) +
+  theme(legend.position = "bottom") +
+  ggtitle(my_species)
+```
+
+```{r, echo = FALSE}
+my_species <- "phalepensis"
+biomass_LANDIS_one_species <- biomass_LANDIS %>% filter(Species == my_species)
+biomass_NFI_one_species <- biomass_NFI %>% filter(Species == my_species)
+
+ggplot() +
+  geom_line(aes(x = Age, y = Biomass, colour = "LANDIS"), data = biomass_LANDIS_one_species) +
+  geom_point(size = 0.5, aes(x = Age, y = Biomass, colour = "NFI"), data = biomass_NFI_one_species) +
+  theme_minimal() +
+  scale_y_continuous("Biomass (g/m2)") +
+  scale_x_continuous("Age (years)", limits = c(0, 100)) +
+  theme(legend.position = "bottom") +
+  ggtitle(my_species)
+```
+
+```{r, echo = FALSE}
+my_species <- "psylvestris"
+biomass_LANDIS_one_species <- biomass_LANDIS %>% filter(Species == my_species)
+biomass_NFI_one_species <- biomass_NFI %>% filter(Species == my_species)
+
+ggplot() +
+  geom_line(aes(x = Age, y = Biomass, colour = "LANDIS"), data = biomass_LANDIS_one_species) +
+  geom_point(size = 0.5, aes(x = Age, y = Biomass, colour = "NFI"), data = biomass_NFI_one_species) +
+  theme_minimal() +
+  scale_y_continuous("Biomass (g/m2)") +
+  scale_x_continuous("Age (years)", limits = c(0, 100)) +
+  theme(legend.position = "bottom") +
+  ggtitle(my_species)
+```
+
+Note: qilex, qpyrenaica and popnigra do not have age assigned in NFI so they do not appear in these plots
+```{r, echo = FALSE}
+my_species <- "qpyrenaica"
+biomass_LANDIS_one_species <- biomass_LANDIS %>% filter(Species == my_species)
+biomass_NFI_one_species <- biomass_NFI %>% filter(Species == my_species)
+
+ggplot() +
+  geom_line(aes(x = Age, y = Biomass, colour = "LANDIS"), data = biomass_LANDIS_one_species) +
+  geom_point(size = 0.5, aes(x = Age, y = Biomass, colour = "NFI"), data = biomass_NFI_one_species) +
+  theme_minimal() +
+  scale_y_continuous("Biomass (g/m2)") +
+  scale_x_continuous("Age (years)", limits = c(0, 100)) +
+  theme(legend.position = "bottom") +
+  ggtitle(my_species)
+```
+
+# Comparison: RGR vs biomass
+
+```{r}
+biomass_class <- site %>%
+  mutate(abovebio = Wood.gDW. + Fol.gDW.,
+         Year_from_zero = Year - 1890) %>%
+  select(Year_from_zero, Species, abovebio) %>%
+  group_by(Year_from_zero, Species) %>%
+  summarise(avg_biomass = mean(abovebio, na.rm = TRUE)) %>%
+  left_join(age_classes, by = c("Year_from_zero" = "Years")) %>%
+  mutate(age_class = as.integer(class)) %>%
+  dplyr::select(age_class, Species, avg_biomass) %>%
+  group_by(age_class, Species) %>%
+  summarise(class_avg_biomass = mean(avg_biomass, na.rm = TRUE)) 
+
+data_LANDIS <- RGR_age_LANDIS %>%
+  dplyr::select(Species, age_class, RGR) %>%
+  full_join(biomass_class)
+
+data_NFI <- RGR_age_NFI %>%
+  mutate(biomass_g_m2 = B_IFN3 * 100)
+```
+
+```{r, echo = FALSE}
+one_spp_LANDIS <- data_LANDIS %>%
+  filter(Species == "pnigra")
+
+one_spp_NFI <- data_NFI %>%
+  filter(Species == "pnigra")
+
+plot_name <- "S4_pnigra"
+# jpeg(file = paste("...", plot_name, sep = ""), width=6, height=4, units="in", res=300)
+ggplot() +
+  geom_line(aes(x = class_avg_biomass, y = RGR, colour = Species), data = one_spp_LANDIS, color = "#1F78B4") +
+  geom_smooth(aes(x = biomass_g_m2, y = RGR, colour = Species), data = one_spp_NFI, color = "#E31A1C", size = 0.3) +
+  geom_point(size = 0.1, aes(x = biomass_g_m2, y = RGR, colour = Species), data = one_spp_NFI, color = "#E31A1C") +
+  theme_classic() +
+  scale_y_continuous(bquote('Relative Growth Rate ('*g~ kg^-1~ year^-1*')')) +
+  scale_x_continuous(bquote('Average biomass ('*g~ m^-2*')')) +
+  theme(legend.position = "none") +
+  ggtitle("Pinus nigra")
+# dev.off()
+```
+
+```{r, echo = FALSE}
+one_spp_LANDIS <- data_LANDIS %>%
+  filter(Species == "psylvestris")
+
+one_spp_NFI <- data_NFI %>%
+  filter(Species == "psylvestris")
+
+plot_name <- "S4_psylvestris"
+# jpeg(file = paste("...", plot_name, sep = ""), width=6, height=4, units="in", res=300)
+ggplot() +
+  geom_line(aes(x = class_avg_biomass, y = RGR, colour = Species), data = one_spp_LANDIS, color = "#1F78B4") +
+  geom_smooth(aes(x = biomass_g_m2, y = RGR, colour = Species), data = one_spp_NFI, color = "#E31A1C", size = 0.3) +
+  geom_point(size = 0.1, aes(x = biomass_g_m2, y = RGR, colour = Species), data = one_spp_NFI, color = "#E31A1C") +
+  theme_classic() +
+  scale_y_continuous(bquote('Relative Growth Rate ('*g~ kg^-1~ year^-1*')')) +
+  scale_x_continuous(bquote('Average biomass ('*g~ m^-2*')')) +
+  theme(legend.position = "none") +
+  ggtitle("Pinus sylvestris")
+# dev.off()
+```
+
+```{r, echo = FALSE}
+one_spp_LANDIS <- data_LANDIS %>%
+  filter(Species == "ppinaster")
+
+one_spp_NFI <- data_NFI %>%
+  filter(Species == "ppinaster")
+
+plot_name <- "S4_ppinaster"
+# jpeg(file = paste("...", plot_name, sep = ""), width=6, height=4, units="in", res=300)
+ggplot() +
+  geom_line(aes(x = class_avg_biomass, y = RGR, colour = Species), data = one_spp_LANDIS, color = "#1F78B4") +
+  geom_smooth(aes(x = biomass_g_m2, y = RGR, colour = Species), data = one_spp_NFI, color = "#E31A1C", size = 0.3) +
+  geom_point(size = 0.1, aes(x = biomass_g_m2, y = RGR, colour = Species), data = one_spp_NFI, color = "#E31A1C") +
+  theme_classic() +
+  scale_y_continuous(bquote('Relative Growth Rate ('*g~ kg^-1~ year^-1*')')) +
+  scale_x_continuous(bquote('Average biomass ('*g~ m^-2*')')) +
+  theme(legend.position = "none") +
+  ggtitle("Pinus pinaster")
+# dev.off()
+```
+
+```{r, echo = FALSE}
+one_spp_LANDIS <- data_LANDIS %>%
+  filter(Species == "phalepensis")
+
+one_spp_NFI <- data_NFI %>%
+  filter(Species == "phalepensis")
+
+plot_name <- "S4_phalepensis"
+# jpeg(file = paste("...", plot_name, sep = ""), width=6, height=4, units="in", res=300)
+ggplot() +
+  geom_line(aes(x = class_avg_biomass, y = RGR, colour = Species), data = one_spp_LANDIS, color = "#1F78B4") +
+  geom_smooth(aes(x = biomass_g_m2, y = RGR, colour = Species), data = one_spp_NFI, color = "#E31A1C", size = 0.3) +
+  geom_point(size = 0.1, aes(x = biomass_g_m2, y = RGR, colour = Species), data = one_spp_NFI, color = "#E31A1C") +
+  theme_classic() +
+  scale_y_continuous(bquote('Relative Growth Rate ('*g~ kg^-1~ year^-1*')')) +
+  scale_x_continuous(bquote('Average biomass ('*g~ m^-2*')')) +
+  theme(legend.position = "none") +
+  ggtitle("Pinus halepensis")
+# dev.off()
+```
+
+```{r, echo = FALSE}
+one_spp_LANDIS <- data_LANDIS %>%
+  filter(Species == "qilex")
+
+one_spp_NFI <- data_NFI %>%
+  filter(Species == "qilex")
+
+plot_name <- "S4_qilex"
+# jpeg(file = paste("...", plot_name, sep = ""), width=6, height=4, units="in", res=300)
+ggplot() +
+  geom_line(aes(x = class_avg_biomass, y = RGR, colour = Species), data = one_spp_LANDIS, color = "#1F78B4") +
+  geom_smooth(aes(x = biomass_g_m2, y = RGR, colour = Species), data = one_spp_NFI, color = "#E31A1C", size = 0.3) +
+  geom_point(size = 0.1, aes(x = biomass_g_m2, y = RGR, colour = Species), data = one_spp_NFI, color = "#E31A1C") +
+  theme_classic() +
+  scale_y_continuous(bquote('Relative Growth Rate ('*g~ kg^-1~ year^-1*')')) +
+  scale_x_continuous(bquote('Average biomass ('*g~ m^-2*')')) +
+  theme(legend.position = "none") +
+  ggtitle("Quercus ilex")
+# dev.off()
+```
+
+```{r, echo = FALSE}
+one_spp_LANDIS <- data_LANDIS %>%
+  filter(Species == "qpyrenaica")
+
+one_spp_NFI <- data_NFI %>%
+  filter(Species == "qpyrenaica")
+
+plot_name <- "S4_qpyrenaica"
+# jpeg(file = paste("...", plot_name, sep = ""), width=6, height=4, units="in", res=300)
+ggplot() +
+  geom_line(aes(x = class_avg_biomass, y = RGR, colour = Species), data = one_spp_LANDIS, color = "#1F78B4") +
+  geom_smooth(aes(x = biomass_g_m2, y = RGR, colour = Species), data = one_spp_NFI, color = "#E31A1C", size = 0.3) +
+  geom_point(size = 0.1, aes(x = biomass_g_m2, y = RGR, colour = Species), data = one_spp_NFI, color = "#E31A1C") +
+  theme_classic() +
+  scale_y_continuous(bquote('Relative Growth Rate ('*g~ kg^-1~ year^-1*')')) +
+  scale_x_continuous(bquote('Average biomass ('*g~ m^-2*')')) +
+  theme(legend.position = "none") +
+  ggtitle("Quercus pyrenaica")
+# dev.off()
+```
+
+```{r, echo = FALSE}
+one_spp_LANDIS <- data_LANDIS %>%
+  filter(Species == "popnigra")
+
+one_spp_NFI <- data_NFI %>%
+  filter(Species == "popnigra")
+
+ggplot() +
+  geom_line(aes(x = class_avg_biomass, y = RGR, colour = Species), data = one_spp_LANDIS) +
+  geom_smooth(aes(x = biomass_g_m2, y = RGR, colour = Species), data = one_spp_NFI, color = "#E31A1C", size = 0.3) +
+  geom_point(size = 0.1, aes(x = biomass_g_m2, y = RGR, colour = Species), data = one_spp_NFI) +
+  theme_minimal() +
+  scale_y_continuous("RGR (g/kg·year)") +
+  scale_x_continuous("Average biomass (g/m2)") +
+  theme(legend.position = "bottom")
+```
