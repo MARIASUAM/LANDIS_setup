@@ -1,4 +1,0 @@
-LandisData	PnETGenericParameters
-PnETGenericParameters		Value
->> ------------------		----- << Default values
-PrecipEvents				11 << could be tuned for our climate conditions

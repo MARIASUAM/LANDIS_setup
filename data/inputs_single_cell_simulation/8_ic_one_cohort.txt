@@ -1,6 +1,0 @@
-LandisData "Initial Communities"
-
-MapCode    0
-
-MapCode    1
-	[species] 10

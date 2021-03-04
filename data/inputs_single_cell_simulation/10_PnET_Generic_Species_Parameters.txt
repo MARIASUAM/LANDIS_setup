@@ -1,5 +1,0 @@
-LandisData	PnETGenericParameters
-PnETGenericParameters		Value
->> ------------------		-----
-PrecipEvents				11 << could be tuned for our climate conditions
-PreventEstablishment		true
