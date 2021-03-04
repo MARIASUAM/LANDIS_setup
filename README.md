@@ -4,6 +4,8 @@ This repository contains scripts and data needed to setup LANDIS-II in a study a
 
 Model initialization subfolder contains the scripts for the generation of the initial communities map ("ic_" scripts) and ecoregions map ("reg_" scripts).
 
+Data files can be found at: 10.5281/zenodo.4580266
+
 Data sources:
 
 	- IFN:
