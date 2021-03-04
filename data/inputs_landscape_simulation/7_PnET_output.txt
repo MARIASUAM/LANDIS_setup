@@ -1,0 +1,9 @@
+LandisData	PNEToutputsites
+
+>>PNEToutputsites	MapCoordinatesX	MapCoordinatesY	MapCoordinatesMaxX	MapCoordinatesMaxY	
+>>----------------------------------------------------------------------------------------	
+ 
+
+PNEToutputsites	Row	Column	
+>>----------------------------------------------------------------------------------------
+>>Site1 9	9

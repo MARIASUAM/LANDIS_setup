@@ -1,0 +1,3 @@
+LandisData	EcoregionParameters											
+EcoregionParameters	SoilType		Latitude	RootingDepth	PrecLossFrac	LeakageFrac		SnowSublimFrac	ClimateFileName             
+   eco1					SALO			37.2		375				0.6				1.0				0.15		../0_climate_inputs/hist_climate_reg1.txt

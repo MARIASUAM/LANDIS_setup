@@ -1,0 +1,16 @@
+LandisData  "PnET-Succession"											
+
+PnET-Succession		Value											
+>>-----------------------------										
+
+Timestep  10
+StartYear 1900									
+															 						
+SeedingAlgorithm  UniversalDispersal << WardSeedDispersal
+																		
+>>PNEToutputsites		7_PnET_output.txt																					
+InitialCommunities		8_ic_legend.txt	
+InitialCommunitiesMap	9_LANDIS_IC_map.tif
+PnETGenericParameters	10_PnET_Generic_Species_Parameters.txt
+PnETSpeciesParameters	11_PnET_Species_Parameters.txt
+EcoregionParameters		12_ecoregions_file.csv

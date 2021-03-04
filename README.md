@@ -2,6 +2,8 @@
 
 This repository contains scripts and data needed to setup LANDIS-II in a study area in southeastern Spain. This includes the generation of input files and calibration of the model parameters.
 
+Model initialization subfolder contains the scripts for the generation of the initial communities map ("ic_" scripts) and ecoregions map ("reg_" scripts).
+
 Data sources:
 
 	- IFN:
@@ -22,7 +24,7 @@ Data sources:
 
 	- Soil data: 
 		File: clay.tif, sand.tif, silt.tif, sta.adf
-		Source: Sand, clay and silt soil content and soil depth. Raster files published by [@Rodriguez_2008]
+		Source: Sand, clay and silt soil content and soil depth. Raster files published by Rodriguez, 2008
 
 	- Climate data:
 		REDIAM data:
@@ -47,4 +49,6 @@ Cornes, Richard C., Gerard van der Schrier, Else J.M. van den Besselaar, and Phi
 
 Karger, Dirk Nikolaus, Dirk R. Schmatz, Gabriel Dettling, and Niklaus E. Zimmermann. 2020. “High-resolution monthly precipitation and temperature time series from 2006 to 2100.” Scientific Data 7 (1): 1–10. https://doi.org/10.1038/s41597-020-00587-y.
 
-Montero, Gregorio, Ricardo Ruiz-Peinado, and Marta Muñoz. 2005. Producción de biomasa y fijación de CO2 por los bosques españoles. Vol. 13. JANUARY 2005. http://libros.inia.es/libros/product{\_}info.php?products{\_}id=64
+Montero, Gregorio, Ricardo Ruiz-Peinado, and Marta Muñoz. 2005. Producción de biomasa y fijación de CO2 por los bosques españoles. Vol. 13. JANUARY 2005.
+
+Rodríguez, José Antonio. 2008. “Sistema de Inferencia Espacial de Propiedades Físico-Químicas Hidráulicas de los Suelos de Andalucía. Herramienta de Apoyo a la Simulación de Procesos Agro-Hidrológicos a Escala Regional. Informe final.” Sevilla: Empresa Pública Desarrollo Agrario y Pesquero. Subdirección de Infraestructura y Desarrollo. Área de Modernización y Regadíos. Consejería de Agricultura y Pesca.
